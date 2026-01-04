@@ -227,31 +227,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Regular customer signup with email verification
   const signup = useCallback(async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string; otp?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API to register
+      const { data, error } = await apiClient.register(name, email, password, 'customer');
 
-    const normalizedEmail = email.toLowerCase().trim();
+      if (error) {
+        return { success: false, error };
+      }
 
-    if (MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail]) {
-      return { success: false, error: 'An account with this email already exists.' };
+      if (data && data.token && data.user) {
+        // Store JWT token
+        localStorage.setItem('auth_token', data.token);
+
+        // Create user object
+        const user: AuthUser = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: 'customer',
+          emailVerified: true,
+        };
+
+        persistUser(user);
+        // For now, auto-verify customers. In production, send real email with OTP
+        const otp = '123456'; // Demo OTP
+        return { success: true, otp };
+      }
+
+      return { success: false, error: 'Signup failed' };
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Signup failed' };
     }
-
-    const otp = generateOtp();
-    const expiresAt = Date.now() + 10 * 60 * 1000;
-
-    const pendingData: PendingVerification = {
-      email: normalizedEmail,
-      name: name.trim(),
-      password,
-      otp,
-      expiresAt,
-    };
-
-    localStorage.setItem(`pending_${normalizedEmail}`, JSON.stringify(pendingData));
-    localStorage.setItem(PENDING_VERIFICATION_KEY, normalizedEmail);
-    setPendingVerification(normalizedEmail);
-
-    return { success: true, otp };
-  }, [registeredUsers]);
+  }, [persistUser]);
 
   // Admin/Agent signup - goes to verification queue
   const signupAsRole = useCallback(async (data: { 
