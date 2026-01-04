@@ -22,6 +22,7 @@ export default function AdminAuth() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   
   const { login, signupAsRole, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +36,12 @@ export default function AdminAuth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     setErrors({});
 
     if (!email || !password) {
@@ -63,6 +70,12 @@ export default function AdminAuth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     setErrors({});
 
     const validation = roleSignupSchema.safeParse({ name, email, password, mobile, organizationName });
@@ -130,15 +143,14 @@ export default function AdminAuth() {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
 
-            <AnimatePresence mode="wait">
-              <TabsContent value="login" className="mt-0">
-                <motion.form
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  onSubmit={handleLogin}
-                  className="space-y-5"
-                >
+            <TabsContent value="login" className="mt-0">
+              <motion.form
+                key="login-form"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                onSubmit={handleLogin}
+                className="space-y-5"
+              >
                   <div className="space-y-2">
                     <Label htmlFor="login-email">Email Address</Label>
                     <div className="relative">
@@ -149,6 +161,8 @@ export default function AdminAuth() {
                         placeholder="admin@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 h-12"
                       />
                     </div>
@@ -164,6 +178,8 @@ export default function AdminAuth() {
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 pr-10 h-12"
                       />
                       <button
@@ -195,17 +211,19 @@ export default function AdminAuth() {
                       <p><span className="text-muted-foreground">Password:</span> <code className="text-foreground">admin123</code></p>
                     </div>
                   </div>
-                </motion.form>
-              </TabsContent>
+              </motion.form>
+            </TabsContent>
 
-              <TabsContent value="signup" className="mt-0">
-                <AnimatePresence mode="wait">
-                  {signupSuccess ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-center py-8"
-                    >
+            <TabsContent value="signup" className="mt-0">
+              <AnimatePresence mode="wait">
+                {signupSuccess ? (
+                  <motion.div
+                    key="signup-success"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="text-center py-8"
+                  >
                       <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="h-8 w-8 text-accent" />
                       </div>
@@ -216,15 +234,16 @@ export default function AdminAuth() {
                       <Button variant="outline" onClick={() => { setActiveTab('login'); resetForm(); }}>
                         Go to Login
                       </Button>
-                    </motion.div>
-                  ) : (
-                    <motion.form
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      onSubmit={handleSignup}
-                      className="space-y-4"
-                    >
+                  </motion.div>
+                ) : (
+                  <motion.form
+                    key="signup-form"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    onSubmit={handleSignup}
+                    className="space-y-4"
+                  >
                       <div className="space-y-2">
                         <Label htmlFor="signup-name">Full Name</Label>
                         <div className="relative">
@@ -234,6 +253,8 @@ export default function AdminAuth() {
                             placeholder="John Doe"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -250,6 +271,8 @@ export default function AdminAuth() {
                             placeholder="admin@company.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -266,6 +289,8 @@ export default function AdminAuth() {
                             placeholder="+91 9876543210"
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -281,6 +306,8 @@ export default function AdminAuth() {
                             placeholder="Your Company Ltd."
                             value={organizationName}
                             onChange={(e) => setOrganizationName(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -296,6 +323,8 @@ export default function AdminAuth() {
                             placeholder="Minimum 6 characters"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 pr-10 h-11"
                           />
                           <button
@@ -323,11 +352,10 @@ export default function AdminAuth() {
                       <p className="text-sm text-center text-muted-foreground">
                         Your registration will be reviewed by Super Admin
                       </p>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </TabsContent>
-            </AnimatePresence>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

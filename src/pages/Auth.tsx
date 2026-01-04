@@ -107,6 +107,7 @@ export default function Auth() {
   const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null);
   const [loadingRole, setLoadingRole] = useState<UserRole | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isComposing, setIsComposing] = useState(false);
   
   const { 
     login, 
@@ -155,6 +156,12 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (e.g., Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     clearErrors();
 
     const result = loginSchema.safeParse({ email, password });
@@ -189,6 +196,12 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (e.g., Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     clearErrors();
 
     const result = signupSchema.safeParse({ name, email, password });
@@ -566,6 +579,8 @@ export default function Auth() {
                           placeholder="you@example.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
@@ -637,6 +652,8 @@ export default function Auth() {
                           placeholder="Min. 6 characters"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
@@ -653,6 +670,8 @@ export default function Auth() {
                           placeholder="Confirm your password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
@@ -743,13 +762,15 @@ export default function Auth() {
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onCompositionStart={() => setIsComposing(true)}
+                                onCompositionEnd={() => setIsComposing(false)}
                                 className="pl-10"
                                 disabled={isLoading}
                               />
                             </div>
                             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                           </div>
-                          
+
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <Label htmlFor="password">Password</Label>
@@ -769,6 +790,8 @@ export default function Auth() {
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onCompositionStart={() => setIsComposing(true)}
+                                onCompositionEnd={() => setIsComposing(false)}
                                 className="pl-10"
                                 disabled={isLoading}
                               />
@@ -809,6 +832,8 @@ export default function Auth() {
                               placeholder="John Doe"
                               value={name}
                               onChange={(e) => setName(e.target.value)}
+                              onCompositionStart={() => setIsComposing(true)}
+                              onCompositionEnd={() => setIsComposing(false)}
                               className="pl-10"
                               disabled={isLoading}
                             />
@@ -826,13 +851,15 @@ export default function Auth() {
                               placeholder="you@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
+                              onCompositionStart={() => setIsComposing(true)}
+                              onCompositionEnd={() => setIsComposing(false)}
                               className="pl-10"
                               disabled={isLoading}
                             />
                           </div>
                           {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="signup-password">Password</Label>
                           <div className="relative">
@@ -843,6 +870,8 @@ export default function Auth() {
                               placeholder="Min. 6 characters"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
+                              onCompositionStart={() => setIsComposing(true)}
+                              onCompositionEnd={() => setIsComposing(false)}
                               className="pl-10"
                               disabled={isLoading}
                             />

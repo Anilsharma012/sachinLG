@@ -3,7 +3,15 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, onKeyDown, ...props }, ref) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Allow Enter to submit forms, but don't prevent it here
+      // The form's onSubmit handler will manage form submission
+      if (onKeyDown) {
+        onKeyDown(e);
+      }
+    };
+
     return (
       <input
         type={type}
@@ -12,6 +20,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className,
         )}
         ref={ref}
+        onKeyDown={handleKeyDown}
         {...props}
       />
     );
