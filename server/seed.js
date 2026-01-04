@@ -21,6 +21,16 @@ const seedDatabase = async () => {
 
     // Create sample users
     console.log('Creating users...');
+    const userSuperAdmin = await User.create({
+      name: 'Super Admin (CEO)',
+      email: 'superadmin@loanagent.com',
+      password: 'superadmin123',
+      role: 'superadmin',
+      phone: '9999999999',
+      isActive: true,
+    });
+    console.log('✓ SuperAdmin created:', userSuperAdmin.email);
+
     const userAdmin = await User.create({
       name: 'Admin User',
       email: 'admin@loanagent.com',
