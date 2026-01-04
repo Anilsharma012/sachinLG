@@ -22,6 +22,7 @@ export default function AdminAuth() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   
   const { login, signupAsRole, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
