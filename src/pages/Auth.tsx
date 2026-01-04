@@ -107,6 +107,7 @@ export default function Auth() {
   const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null);
   const [loadingRole, setLoadingRole] = useState<UserRole | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isComposing, setIsComposing] = useState(false);
   
   const { 
     login, 
