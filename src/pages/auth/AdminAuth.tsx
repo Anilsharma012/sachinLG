@@ -36,6 +36,12 @@ export default function AdminAuth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     setErrors({});
 
     if (!email || !password) {
