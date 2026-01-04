@@ -579,6 +579,8 @@ export default function Auth() {
                           placeholder="you@example.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
