@@ -262,54 +262,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [persistUser]);
 
   // Admin/Agent signup - goes to verification queue
-  const signupAsRole = useCallback(async (data: { 
-    name: string; 
-    email: string; 
-    password: string; 
-    mobile: string; 
-    role: 'admin' | 'agent'; 
+  const signupAsRole = useCallback(async (data: {
+    name: string;
+    email: string;
+    password: string;
+    mobile: string;
+    role: 'admin' | 'agent';
     organizationName?: string;
     parentAdminId?: string;
   }): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API to register
+      const { data: responseData, error } = await apiClient.register(
+        data.name,
+        data.email,
+        data.password,
+        data.role
+      );
 
-    const normalizedEmail = data.email.toLowerCase().trim();
+      if (error) {
+        return { success: false, error };
+      }
 
-    // Check if user already exists
-    if (MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail]) {
-      return { success: false, error: 'An account with this email already exists.' };
+      if (responseData && responseData.user) {
+        // For admin/agent, create pending entry in local state
+        // In production, backend would handle approval workflow
+        const newPending: PendingRoleSignup = {
+          id: responseData.user.id,
+          email: data.email.toLowerCase().trim(),
+          name: data.name.trim(),
+          password: data.password,
+          mobile: data.mobile,
+          role: data.role,
+          organizationName: data.organizationName,
+          parentAdminId: data.parentAdminId,
+          status: 'pending',
+          createdAt: Date.now(),
+        };
+
+        if (data.role === 'admin') {
+          persistPendingAdmins([...pendingAdmins, newPending]);
+        } else {
+          persistPendingAgents([...pendingAgents, newPending]);
+        }
+
+        return { success: true };
+      }
+
+      return { success: false, error: 'Signup failed' };
+    } catch (error) {
+      console.error('SignupAsRole error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Signup failed' };
     }
-
-    // Check if already in pending queue
-    const existingPending = data.role === 'admin' 
-      ? pendingAdmins.find(a => a.email === normalizedEmail)
-      : pendingAgents.find(a => a.email === normalizedEmail);
-
-    if (existingPending) {
-      return { success: false, error: 'A signup request with this email is already pending.' };
-    }
-
-    const newPending: PendingRoleSignup = {
-      id: `pending_${Date.now()}`,
-      email: normalizedEmail,
-      name: data.name.trim(),
-      password: data.password,
-      mobile: data.mobile,
-      role: data.role,
-      organizationName: data.organizationName,
-      parentAdminId: data.parentAdminId,
-      status: 'pending',
-      createdAt: Date.now(),
-    };
-
-    if (data.role === 'admin') {
-      persistPendingAdmins([...pendingAdmins, newPending]);
-    } else {
-      persistPendingAgents([...pendingAgents, newPending]);
-    }
-
-    return { success: true };
-  }, [registeredUsers, pendingAdmins, pendingAgents, persistPendingAdmins, persistPendingAgents]);
+  }, [pendingAdmins, pendingAgents, persistPendingAdmins, persistPendingAgents]);
 
   const approveUser = useCallback(async (id: string, role: 'admin' | 'agent'): Promise<{ success: boolean; error?: string }> => {
     await new Promise(resolve => setTimeout(resolve, 500));
