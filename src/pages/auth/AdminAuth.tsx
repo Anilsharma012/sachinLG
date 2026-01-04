@@ -64,6 +64,12 @@ export default function AdminAuth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     setErrors({});
 
     const validation = roleSignupSchema.safeParse({ name, email, password, mobile, organizationName });
