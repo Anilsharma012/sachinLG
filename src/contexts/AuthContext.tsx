@@ -428,31 +428,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingVerification]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API
+      const { data, error } = await apiClient.login(email, password);
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const mockUser = MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail];
-    
-    if (!mockUser) {
-      // Check if in pending queue
-      const pendingAdmin = pendingAdmins.find(a => a.email === normalizedEmail);
-      const pendingAgent = pendingAgents.find(a => a.email === normalizedEmail);
-      
-      if (pendingAdmin || pendingAgent) {
-        return { success: false, error: 'Your account is pending verification. Please wait for approval.' };
+      if (error) {
+        return { success: false, error };
       }
-      
-      return { success: false, error: 'User not found. Please sign up first.' };
-    }
-    
-    if (mockUser.password !== password) {
-      return { success: false, error: 'Invalid password.' };
-    }
 
-    const { password: _, ...userWithoutPassword } = mockUser;
-    persistUser(userWithoutPassword);
-    return { success: true };
-  }, [persistUser, registeredUsers, pendingAdmins, pendingAgents]);
+      if (data && data.token && data.user) {
+        // Store JWT token
+        localStorage.setItem('auth_token', data.token);
+
+        // Create user object
+        const user: AuthUser = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role as UserRole,
+          emailVerified: true,
+        };
+
+        persistUser(user);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Login failed' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
+    }
+  }, [persistUser]);
 
   const loginAsRole = useCallback((role: UserRole) => {
     const roleEmails: Record<UserRole, string> = {
