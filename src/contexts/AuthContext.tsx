@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
+import { apiClient } from '@/lib/api';
 
 export type UserRole = 'superadmin' | 'admin' | 'agent' | 'customer';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
@@ -164,36 +165,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    try {
-      // Load registered users
-      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-      if (storedUsers) {
-        setRegisteredUsers(JSON.parse(storedUsers));
-      }
-
-      // Load current user session
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.user) {
-          setUser(parsed.user);
+    const initAuth = async () => {
+      try {
+        // Load registered users
+        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+        if (storedUsers) {
+          setRegisteredUsers(JSON.parse(storedUsers));
         }
-      }
 
-      // Load pending verification
-      const pendingEmail = localStorage.getItem(PENDING_VERIFICATION_KEY);
-      if (pendingEmail) {
-        setPendingVerification(pendingEmail);
-      }
+        // Check for stored JWT token first (MongoDB login)
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          // Verify token with backend
+          const { data, error } = await apiClient.verifyToken(token);
+          if (!error && data && data.decoded) {
+            // Token is valid - user is logged in
+            // Note: You may want to fetch user details from /api/users/:id
+            // For now, we'll load from storage
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed && parsed.user) {
+                setUser(parsed.user);
+              }
+            }
+          } else {
+            // Token is invalid or expired - clear it
+            localStorage.removeItem('auth_token');
+          }
+        } else {
+          // Load current user session (fallback to old storage)
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.user) {
+              setUser(parsed.user);
+            }
+          }
+        }
 
-      // Load pending admin/agent lists
-      loadPendingLists();
-    } catch (e) {
-      console.error('Failed to parse stored auth:', e);
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
-    }
+        // Load pending verification
+        const pendingEmail = localStorage.getItem(PENDING_VERIFICATION_KEY);
+        if (pendingEmail) {
+          setPendingVerification(pendingEmail);
+        }
+
+        // Load pending admin/agent lists
+        loadPendingLists();
+      } catch (e) {
+        console.error('Failed to parse stored auth:', e);
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
   }, [loadPendingLists]);
 
   const refreshPendingLists = useCallback(() => {
@@ -226,81 +253,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Regular customer signup with email verification
   const signup = useCallback(async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string; otp?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API to register
+      const { data, error } = await apiClient.register(name, email, password, 'customer');
 
-    const normalizedEmail = email.toLowerCase().trim();
+      if (error) {
+        return { success: false, error };
+      }
 
-    if (MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail]) {
-      return { success: false, error: 'An account with this email already exists.' };
+      if (data && data.token && data.user) {
+        // Store JWT token
+        localStorage.setItem('auth_token', data.token);
+
+        // Create user object
+        const user: AuthUser = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: 'customer',
+          emailVerified: true,
+        };
+
+        persistUser(user);
+        // For now, auto-verify customers. In production, send real email with OTP
+        const otp = '123456'; // Demo OTP
+        return { success: true, otp };
+      }
+
+      return { success: false, error: 'Signup failed' };
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Signup failed' };
     }
-
-    const otp = generateOtp();
-    const expiresAt = Date.now() + 10 * 60 * 1000;
-
-    const pendingData: PendingVerification = {
-      email: normalizedEmail,
-      name: name.trim(),
-      password,
-      otp,
-      expiresAt,
-    };
-
-    localStorage.setItem(`pending_${normalizedEmail}`, JSON.stringify(pendingData));
-    localStorage.setItem(PENDING_VERIFICATION_KEY, normalizedEmail);
-    setPendingVerification(normalizedEmail);
-
-    return { success: true, otp };
-  }, [registeredUsers]);
+  }, [persistUser]);
 
   // Admin/Agent signup - goes to verification queue
-  const signupAsRole = useCallback(async (data: { 
-    name: string; 
-    email: string; 
-    password: string; 
-    mobile: string; 
-    role: 'admin' | 'agent'; 
+  const signupAsRole = useCallback(async (data: {
+    name: string;
+    email: string;
+    password: string;
+    mobile: string;
+    role: 'admin' | 'agent';
     organizationName?: string;
     parentAdminId?: string;
   }): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API to register
+      const { data: responseData, error } = await apiClient.register(
+        data.name,
+        data.email,
+        data.password,
+        data.role
+      );
 
-    const normalizedEmail = data.email.toLowerCase().trim();
+      if (error) {
+        return { success: false, error };
+      }
 
-    // Check if user already exists
-    if (MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail]) {
-      return { success: false, error: 'An account with this email already exists.' };
+      if (responseData && responseData.user) {
+        // For admin/agent, create pending entry in local state
+        // In production, backend would handle approval workflow
+        const newPending: PendingRoleSignup = {
+          id: responseData.user.id,
+          email: data.email.toLowerCase().trim(),
+          name: data.name.trim(),
+          password: data.password,
+          mobile: data.mobile,
+          role: data.role,
+          organizationName: data.organizationName,
+          parentAdminId: data.parentAdminId,
+          status: 'pending',
+          createdAt: Date.now(),
+        };
+
+        if (data.role === 'admin') {
+          persistPendingAdmins([...pendingAdmins, newPending]);
+        } else {
+          persistPendingAgents([...pendingAgents, newPending]);
+        }
+
+        return { success: true };
+      }
+
+      return { success: false, error: 'Signup failed' };
+    } catch (error) {
+      console.error('SignupAsRole error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Signup failed' };
     }
-
-    // Check if already in pending queue
-    const existingPending = data.role === 'admin' 
-      ? pendingAdmins.find(a => a.email === normalizedEmail)
-      : pendingAgents.find(a => a.email === normalizedEmail);
-
-    if (existingPending) {
-      return { success: false, error: 'A signup request with this email is already pending.' };
-    }
-
-    const newPending: PendingRoleSignup = {
-      id: `pending_${Date.now()}`,
-      email: normalizedEmail,
-      name: data.name.trim(),
-      password: data.password,
-      mobile: data.mobile,
-      role: data.role,
-      organizationName: data.organizationName,
-      parentAdminId: data.parentAdminId,
-      status: 'pending',
-      createdAt: Date.now(),
-    };
-
-    if (data.role === 'admin') {
-      persistPendingAdmins([...pendingAdmins, newPending]);
-    } else {
-      persistPendingAgents([...pendingAgents, newPending]);
-    }
-
-    return { success: true };
-  }, [registeredUsers, pendingAdmins, pendingAgents, persistPendingAdmins, persistPendingAgents]);
+  }, [pendingAdmins, pendingAgents, persistPendingAdmins, persistPendingAgents]);
 
   const approveUser = useCallback(async (id: string, role: 'admin' | 'agent'): Promise<{ success: boolean; error?: string }> => {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -427,46 +467,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingVerification]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Call MongoDB API
+      const { data, error } = await apiClient.login(email, password);
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const mockUser = MOCK_USERS[normalizedEmail] || registeredUsers[normalizedEmail];
-    
-    if (!mockUser) {
-      // Check if in pending queue
-      const pendingAdmin = pendingAdmins.find(a => a.email === normalizedEmail);
-      const pendingAgent = pendingAgents.find(a => a.email === normalizedEmail);
-      
-      if (pendingAdmin || pendingAgent) {
-        return { success: false, error: 'Your account is pending verification. Please wait for approval.' };
+      if (error) {
+        return { success: false, error };
       }
-      
-      return { success: false, error: 'User not found. Please sign up first.' };
-    }
-    
-    if (mockUser.password !== password) {
-      return { success: false, error: 'Invalid password.' };
-    }
 
-    const { password: _, ...userWithoutPassword } = mockUser;
-    persistUser(userWithoutPassword);
-    return { success: true };
-  }, [persistUser, registeredUsers, pendingAdmins, pendingAgents]);
+      if (data && data.token && data.user) {
+        // Store JWT token
+        localStorage.setItem('auth_token', data.token);
 
-  const loginAsRole = useCallback((role: UserRole) => {
-    const roleEmails: Record<UserRole, string> = {
-      superadmin: 'superadmin@loanagent.com',
-      admin: 'admin@loanagent.com',
-      agent: 'agent@loanagent.com',
-      customer: 'customer@loanagent.com',
-    };
-    
-    const mockUser = MOCK_USERS[roleEmails[role]];
-    if (mockUser) {
-      const { password: _, ...userWithoutPassword } = mockUser;
-      persistUser(userWithoutPassword);
+        // Create user object
+        const user: AuthUser = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role as UserRole,
+          emailVerified: true,
+        };
+
+        persistUser(user);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Login failed' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
     }
   }, [persistUser]);
+
+  const loginAsRole = useCallback(async (role: UserRole) => {
+    const roleCredentials: Record<UserRole, { email: string; password: string }> = {
+      superadmin: { email: 'superadmin@loanagent.com', password: 'superadmin123' },
+      admin: { email: 'admin@loanagent.com', password: 'admin123' },
+      agent: { email: 'agent@loanagent.com', password: 'agent123' },
+      customer: { email: 'customer@loanagent.com', password: 'customer123' },
+    };
+
+    const creds = roleCredentials[role];
+    const result = await login(creds.email, creds.password);
+    if (!result.success) {
+      console.error(`Failed to login as ${role}:`, result.error);
+    }
+  }, [login]);
 
   const loginWithSocial = useCallback(async (provider: 'google' | 'github'): Promise<{ success: boolean; error?: string }> => {
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -552,6 +598,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingPasswordReset]);
 
   const logout = useCallback(() => {
+    localStorage.removeItem('auth_token');
     persistUser(null);
   }, [persistUser]);
 
