@@ -165,36 +165,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    try {
-      // Load registered users
-      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-      if (storedUsers) {
-        setRegisteredUsers(JSON.parse(storedUsers));
-      }
-
-      // Load current user session
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.user) {
-          setUser(parsed.user);
+    const initAuth = async () => {
+      try {
+        // Load registered users
+        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+        if (storedUsers) {
+          setRegisteredUsers(JSON.parse(storedUsers));
         }
-      }
 
-      // Load pending verification
-      const pendingEmail = localStorage.getItem(PENDING_VERIFICATION_KEY);
-      if (pendingEmail) {
-        setPendingVerification(pendingEmail);
-      }
+        // Check for stored JWT token first (MongoDB login)
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          // Verify token with backend
+          const { data, error } = await apiClient.verifyToken(token);
+          if (!error && data && data.decoded) {
+            // Token is valid - user is logged in
+            // Note: You may want to fetch user details from /api/users/:id
+            // For now, we'll load from storage
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed && parsed.user) {
+                setUser(parsed.user);
+              }
+            }
+          } else {
+            // Token is invalid or expired - clear it
+            localStorage.removeItem('auth_token');
+          }
+        } else {
+          // Load current user session (fallback to old storage)
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.user) {
+              setUser(parsed.user);
+            }
+          }
+        }
 
-      // Load pending admin/agent lists
-      loadPendingLists();
-    } catch (e) {
-      console.error('Failed to parse stored auth:', e);
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
-    }
+        // Load pending verification
+        const pendingEmail = localStorage.getItem(PENDING_VERIFICATION_KEY);
+        if (pendingEmail) {
+          setPendingVerification(pendingEmail);
+        }
+
+        // Load pending admin/agent lists
+        loadPendingLists();
+      } catch (e) {
+        console.error('Failed to parse stored auth:', e);
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
   }, [loadPendingLists]);
 
   const refreshPendingLists = useCallback(() => {
