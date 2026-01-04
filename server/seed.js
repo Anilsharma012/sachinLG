@@ -140,10 +140,11 @@ const seedDatabase = async () => {
 
     console.log('\n✅ Database seeding completed successfully!\n');
     console.log('📊 Summary:');
-    console.log('  - Users created: 4');
+    console.log('  - Users created: 5');
     console.log('  - Customers created: 2');
     console.log('  - Agents created: 1');
     console.log('\n🔐 Test Credentials:');
+    console.log('  SuperAdmin: superadmin@loanagent.com / superadmin123');
     console.log('  Admin: admin@loanagent.com / admin123');
     console.log('  Agent: agent@loanagent.com / agent123');
     console.log('  Customer 1: customer1@loanagent.com / customer123');
