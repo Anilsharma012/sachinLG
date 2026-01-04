@@ -161,6 +161,8 @@ export default function AdminAuth() {
                         placeholder="admin@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 h-12"
                       />
                     </div>
@@ -176,6 +178,8 @@ export default function AdminAuth() {
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 pr-10 h-12"
                       />
                       <button
