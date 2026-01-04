@@ -499,20 +499,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persistUser]);
 
-  const loginAsRole = useCallback((role: UserRole) => {
-    const roleEmails: Record<UserRole, string> = {
-      superadmin: 'superadmin@loanagent.com',
-      admin: 'admin@loanagent.com',
-      agent: 'agent@loanagent.com',
-      customer: 'customer@loanagent.com',
+  const loginAsRole = useCallback(async (role: UserRole) => {
+    const roleCredentials: Record<UserRole, { email: string; password: string }> = {
+      superadmin: { email: 'superadmin@loanagent.com', password: 'superadmin123' },
+      admin: { email: 'admin@loanagent.com', password: 'admin123' },
+      agent: { email: 'agent@loanagent.com', password: 'agent123' },
+      customer: { email: 'customer@loanagent.com', password: 'customer123' },
     };
-    
-    const mockUser = MOCK_USERS[roleEmails[role]];
-    if (mockUser) {
-      const { password: _, ...userWithoutPassword } = mockUser;
-      persistUser(userWithoutPassword);
+
+    const creds = roleCredentials[role];
+    const result = await login(creds.email, creds.password);
+    if (!result.success) {
+      console.error(`Failed to login as ${role}:`, result.error);
     }
-  }, [persistUser]);
+  }, [login]);
 
   const loginWithSocial = useCallback(async (provider: 'google' | 'github'): Promise<{ success: boolean; error?: string }> => {
     await new Promise(resolve => setTimeout(resolve, 1000));
