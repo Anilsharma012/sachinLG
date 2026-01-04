@@ -158,6 +158,8 @@ export default function AgentAuth() {
                         placeholder="agent@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 h-12"
                       />
                     </div>
@@ -173,6 +175,8 @@ export default function AgentAuth() {
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onCompositionStart={() => setIsComposing(true)}
+                        onCompositionEnd={() => setIsComposing(false)}
                         className="pl-10 pr-10 h-12"
                       />
                       <button
@@ -250,6 +254,8 @@ export default function AgentAuth() {
                             placeholder="Rahul Sharma"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -266,6 +272,8 @@ export default function AgentAuth() {
                             placeholder="agent@company.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -282,6 +290,8 @@ export default function AgentAuth() {
                             placeholder="+91 9876543210"
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 h-11"
                           />
                         </div>
@@ -298,6 +308,8 @@ export default function AgentAuth() {
                             placeholder="Minimum 6 characters"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={() => setIsComposing(false)}
                             className="pl-10 pr-10 h-11"
                           />
                           <button
