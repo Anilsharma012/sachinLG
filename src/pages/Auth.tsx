@@ -156,6 +156,12 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent form submission during IME composition (e.g., Hindi/Hinglish input)
+    if (isComposing) {
+      return;
+    }
+
     clearErrors();
 
     const result = loginSchema.safeParse({ email, password });
