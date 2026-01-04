@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
+import { apiClient } from '@/lib/api';
 
 export type UserRole = 'superadmin' | 'admin' | 'agent' | 'customer';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
