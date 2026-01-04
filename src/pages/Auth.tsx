@@ -756,13 +756,15 @@ export default function Auth() {
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onCompositionStart={() => setIsComposing(true)}
+                                onCompositionEnd={() => setIsComposing(false)}
                                 className="pl-10"
                                 disabled={isLoading}
                               />
                             </div>
                             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                           </div>
-                          
+
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <Label htmlFor="password">Password</Label>
@@ -782,6 +784,8 @@ export default function Auth() {
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onCompositionStart={() => setIsComposing(true)}
+                                onCompositionEnd={() => setIsComposing(false)}
                                 className="pl-10"
                                 disabled={isLoading}
                               />
