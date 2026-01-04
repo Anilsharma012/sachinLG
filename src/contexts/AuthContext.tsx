@@ -572,6 +572,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingPasswordReset]);
 
   const logout = useCallback(() => {
+    localStorage.removeItem('auth_token');
     persistUser(null);
   }, [persistUser]);
 
