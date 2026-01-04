@@ -652,6 +652,8 @@ export default function Auth() {
                           placeholder="Min. 6 characters"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
@@ -668,6 +670,8 @@ export default function Auth() {
                           placeholder="Confirm your password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={() => setIsComposing(false)}
                           className="pl-10"
                           disabled={isLoading}
                         />
